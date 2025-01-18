@@ -83,7 +83,7 @@ const updateAllUsers = async (req, res) => {
   }
 };
 
-// Get user by ID
+
 const getUserbyID = async (req, res) => {
   try {
     const id = req.params.id;
