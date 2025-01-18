@@ -4,32 +4,60 @@ const auth = require("../auth/AuthValidation");
 require("dotenv").config();
 
 // Create user
+
 const createUser = async (req, res) => {
   try {
+    const { Email, Password, MobileNumber, status } = req.body;
+
+    // Check if Email, MobileNumber, or Password already exists
+    const existingUser = await userModel.findOne({
+      $or: [
+        { Email },
+        { MobileNumber },
+      ],
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email or Mobile Number already in use",
+      });
+    }
+
+    // Proceed with user creation if no duplicates are found
     const user = {
-      Email: req.body.Email,
-      Password: encrypt.generatePassword(req.body.Password), // Ensure async if possible
-      MobileNumber: req.body.MobileNumber,
-      Coupons:["67497c0f3600417c0e450d7d"],
+      Email,
+      Password: await encrypt.generatePassword(Password), // Ensure password is hashed
+      MobileNumber,
+      Coupons: ["67497c0f3600417c0e450d7d"],
       FullName: "",
       DateOfBirth: "",
-      status: req.body.status,
+      status,
       isAdmin: "false",
       passwordChangedAt: Date.now(),
     };
 
+    // Save the user to the database
     const savedUser = await userModel.create(user);
+
     if (savedUser) {
+      // Send response with token
       auth.createSendToken(savedUser, 201, res);
     } else {
-      res.status(400).json({ message: "Incomplete User Details" });
+      res.status(400).json({
+        success: false,
+        message: "Incomplete User Details",
+      });
     }
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error in creating", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Error in creating user",
+      error: error.message,
+    });
   }
 };
+
 
 // Get all users
 const getAllUser = async (req, res) => {
