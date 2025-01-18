@@ -7,16 +7,20 @@ require("dotenv").config();
 
 const createUser = async (req, res) => {
   try {
-    const { Email, Password, MobileNumber, status } = req.body;
+    const { Email, MobileNumber, Password } = req.body;
+    const query = {
+      $or: [],
+    };
 
-    // Check if Email, MobileNumber, or Password already exists
-    const existingUser = await userModel.findOne({
-      $or: [
-        { Email },
-        { MobileNumber },
-      ],
-    });
+    if (Email) {
+      query.$or.push({ Email });
+    }
 
+    if (MobileNumber) {
+      query.$or.push({ MobileNumber });
+    }
+
+    const existingUser = await userModel.findOne(query);
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -32,7 +36,7 @@ const createUser = async (req, res) => {
       Coupons: ["67497c0f3600417c0e450d7d"],
       FullName: "",
       DateOfBirth: "",
-      status,
+      status: req.body.status,
       isAdmin: "false",
       passwordChangedAt: Date.now(),
     };
@@ -58,7 +62,6 @@ const createUser = async (req, res) => {
   }
 };
 
-
 // Get all users
 const getAllUser = async (req, res) => {
   try {
@@ -79,10 +82,11 @@ const updateAllUsers = async (req, res) => {
       modifiedCount: result.modifiedCount,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error updating users", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating users", error: error.message });
   }
 };
-
 
 const getUserbyID = async (req, res) => {
   try {
