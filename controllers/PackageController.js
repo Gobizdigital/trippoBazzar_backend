@@ -258,7 +258,7 @@ const verifyAmount = async (req, res) => {
 // Updated createOrder to return a promise
 const createOrder = async (totalPrice) => {
   const options = {
-    amount: (totalPrice-75000) * 100, // Convert to paise (Razorpay expects the amount in paise)
+    amount: (totalPrice) * 100, // Convert to paise (Razorpay expects the amount in paise)
     currency: "INR",
     receipt: "order_1",
   };
