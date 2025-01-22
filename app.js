@@ -1,17 +1,20 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const compression = require("compression");
-const cors=require("cors")
+const cors = require("cors");
 require("dotenv").config(); // Ensure environment variables are loaded
 
 const app = express();
 const PORT = process.env.PORT || 4000; // Use environment variable for port
 
-
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://trippobazaar.com" || "http://localhost:4000", // Replace with your actual frontend URL
+  })
+);
 
 // Require Routes
 const userRoutes = require("./routes/UserRoutes");
@@ -27,7 +30,6 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-
 // Define API Endpoints with prefixes
 app.use("/api/users", userRoutes);
 app.use("/api/continent", continentRoutes);
@@ -42,11 +44,11 @@ app.use("/api/google", googleRoutes);
 const connectDB = async (retries = 5) => {
   while (retries) {
     try {
-      await mongoose.connect(process.env.DB_URL,{
+      await mongoose.connect(process.env.DB_URL, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
         maxPoolSize: 10, // Maximum connections in the pool
-        minPoolSize: 2, 
+        minPoolSize: 2,
       });
       console.log("Connected to MongoDB");
       break; // Exit the loop on successful connection

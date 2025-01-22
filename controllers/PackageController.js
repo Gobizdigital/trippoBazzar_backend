@@ -227,7 +227,6 @@ const verifyAmount = async (req, res) => {
   try {
     const { selectedHotels, Pack_id, guests, coupon } = req.body;
 
-
     // Validate input data
     if (!Pack_id || !guests || !Array.isArray(selectedHotels)) {
       return res.status(400).json({ error: "Invalid input data" });
@@ -258,26 +257,29 @@ const verifyAmount = async (req, res) => {
 // Updated createOrder to return a promise
 const createOrder = async (totalPrice) => {
   const options = {
-    amount: (totalPrice) * 100, // Convert to paise (Razorpay expects the amount in paise)
+    amount: totalPrice * 100, // Convert to paise (Razorpay expects the amount in paise)
     currency: "INR",
     receipt: "order_1",
+    payment_capture: 1, // Auto-capture the payment
   };
 
   try {
-    // Creating the Razorpay order
+    // Creating Razorpay order
     return new Promise((resolve, reject) => {
       razorPayInstance.orders.create(options, (err, order) => {
         if (err) {
+          console.error("Error creating Razorpay order:", err); // Log the error
           reject({
             message: "Error creating an order",
             error: err.message,
           });
         } else {
-          resolve(order); // Resolving the promise with the order details
+          resolve(order); // Return the created order
         }
       });
     });
   } catch (error) {
+    console.error("Unhandled error while creating Razorpay order:", error);
     throw new Error(`Error creating an order: ${error.message}`);
   }
 };
