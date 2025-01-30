@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: "https://trippobazaar.com" || "http://localhost:4000", // Replace with your actual frontend URL
+    origin: "https://trippobazaar.com" || "http://localhost:5173", // Replace with your actual frontend URL
   })
 );
 
@@ -24,6 +24,7 @@ const stateRoutes = require("./routes/StateRoutes");
 const packageRoutes = require("./routes/PackageRoutes");
 const hotelRoutes = require("./routes/HotelRoutes");
 const couponRoutes = require("./routes/CouponRoutes");
+const contactRoutes = require("./routes/ContactRoutes");
 const googleRoutes = require("./routes/GoogleRoutes");
 
 app.get("/", (req, res) => {
@@ -38,6 +39,7 @@ app.use("/api/state", stateRoutes);
 app.use("/api/package", packageRoutes);
 app.use("/api/hotel", hotelRoutes);
 app.use("/api/coupon", couponRoutes);
+app.use("/api/contact", contactRoutes);
 app.use("/api/google", googleRoutes);
 
 // DATABASE CONNECTION
