@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: "https://trippobazaar.com" || "http://localhost:4000", // Replace with your actual frontend URL
+    origin: "https://trippobazaar.com" || "http://localhost:5173", // Replace with your actual frontend URL
   })
 );
 
