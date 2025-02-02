@@ -25,6 +25,7 @@ const packageRoutes = require("./routes/PackageRoutes");
 const hotelRoutes = require("./routes/HotelRoutes");
 const couponRoutes = require("./routes/CouponRoutes");
 const contactRoutes = require("./routes/ContactRoutes");
+const bookingRoutes = require("./routes/BookingRoutes");
 const googleRoutes = require("./routes/GoogleRoutes");
 
 app.get("/", (req, res) => {
@@ -40,6 +41,7 @@ app.use("/api/package", packageRoutes);
 app.use("/api/hotel", hotelRoutes);
 app.use("/api/coupon", couponRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/booking", bookingRoutes);
 app.use("/api/google", googleRoutes);
 
 // DATABASE CONNECTION

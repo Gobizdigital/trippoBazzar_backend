@@ -6,7 +6,7 @@ const router = require("express").Router();
 router.post("/", userController.createUser);
 
 // Route for getting all users (admin-protected)
-router.get("/", auth.protect, auth.restrictToAdmin, userController.getAllUser);
+router.get("/", userController.getAllUser);
 
 // Route for getting, updating, and deleting a user by ID
 router.get("/data/:id",auth.protect, userController.getUserbyID);

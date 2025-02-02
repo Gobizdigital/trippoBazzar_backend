@@ -20,9 +20,17 @@ const userSchema = new Schema({
     default: null,
   },
   Address: { type: String },
-  Coupons: [{ type: Schema.Types.ObjectId, ref: 'Coupon' }],
-  MaritalStatus: { type: String, enum: ["Married", "Not-Married"] },
-  Gender: { type: String, enum: ["Male", "Female", "Non-Binary"] },
+  Coupons: [{ type: Schema.Types.ObjectId, ref: "Coupon" }],
+  Gender: {
+    type: String,
+    enum: ["Male", "Female", "Non-Binary"],
+    default: "Male", // Set default value to "Male"
+  },
+  MaritalStatus: {
+    type: String,
+    enum: ["Married", "Not-Married"],
+    default: "Not-Married", // Set default value to "Not-Married"
+  },
   PinCode: { type: String },
   WishListCountries: [{ type: Schema.Types.ObjectId, ref: "Country" }],
   WishListStates: [{ type: Schema.Types.ObjectId, ref: "State" }],
@@ -38,6 +46,7 @@ const userSchema = new Schema({
       TravellersPassportDateOfExpiry: { type: String },
     },
   ],
+  BookingDetails: [{ type: Schema.Types.ObjectId, ref: "BookingDetails" }],
 });
 userSchema.methods.changedPassword = function (jwtIat) {
   if (this.passwordChangedAt) {

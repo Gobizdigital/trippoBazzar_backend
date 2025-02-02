@@ -65,7 +65,10 @@ const createUser = async (req, res) => {
 // Get all users
 const getAllUser = async (req, res) => {
   try {
-    const user = await userModel.find({ status: true }).lean(); // Use .lean() for faster query
+    const user = await userModel
+      .find({ status: true })
+      .lean()
+      .populate("BookingDetails"); // Use .lean() for faster query
     res.status(200).json({ data: user, message: "Users fetched successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
