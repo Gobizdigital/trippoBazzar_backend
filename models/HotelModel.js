@@ -9,12 +9,15 @@ const hotelSchema = new Schema({
   hotelPhotoUrl: {
     type: [String],
   },
-  hotelRating:{
-    type:Number,
+  hotelRating: {
+    type: Number,
   },
-  hotelPrice:{
-    type:Number,
-  }
+  hotelPrice: {
+    type: Number,
+  },
+  hotelType: {
+    type: String,
+  },
 });
 
 module.exports = mongoose.model("Hotel", hotelSchema);

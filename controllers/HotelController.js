@@ -39,6 +39,22 @@ const getAllHotels = async (req, res) => {
   }
 };
 
+const updateAllHotels = async (req, res) => {
+  try {
+    const updateData = req.body;
+    const result = await hotelModel.updateMany({}, updateData);
+
+    res.status(200).json({
+      message: "Hotels updated successfully",
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating Hotels", error: error.message });
+  }
+};
+
 const getHotelById = async (req, res) => {
   try {
     const hotelId = req.params.id;
@@ -112,6 +128,7 @@ module.exports = {
   addHotel,
   getAllHotels,
   getHotelById,
+  updateAllHotels,
   updateHotel,
-  deleteHotel
+  deleteHotel,
 };
