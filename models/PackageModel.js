@@ -36,7 +36,6 @@ const packageSchema = new Schema({
       },
       dayDetails: {
         type: String,
-        required: true,
       },
     },
   ],
@@ -63,10 +62,10 @@ const packageSchema = new Schema({
     },
   ],
   policies: {
-    type:String,
+    type: String,
   },
   termsAndConditions: {
-    type:String,
+    type: String,
   },
 });
 
