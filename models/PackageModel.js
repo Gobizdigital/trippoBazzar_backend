@@ -15,6 +15,19 @@ const packageSchema = new Schema({
     type: Number,
     required: true,
   },
+  pricing: [
+    {
+      guestCount: { type: Number },
+      packageType: {
+        type: String,
+        enum: ["Standard", "Deluxe", "Super Deluxe", "Luxury"],
+      },
+      basePrice: { type: Number },
+      extraPersonCharge: { type: Number },
+      extraBedCharge: { type: Number },
+      CNB: { type: Number },
+    },
+  ],
   whatsIncluded: {
     type: [String],
     enum: ["Food", "Hotel", "Car", "Explore", "Travel", "Visa"],

@@ -144,6 +144,8 @@ const calculateTotalPrice = async ({
   Pack_id,
   guests,
   coupon,
+  selectedPricing,
+  services, // Additional services (extra bed, CNB)
 }) => {
   // Step 1: Fetch package details
   const packageDetails = await packageModel.findById(Pack_id);
@@ -151,54 +153,78 @@ const calculateTotalPrice = async ({
     throw new Error("Package not found");
   }
 
-  const basePrice = packageDetails.price;
-  const mainPrice = basePrice * guests;
+  // Step 2: Verify pricing from the package model
+  let mainPrice = packageDetails.price * guests; // Default price without selectedPricing
+  let extraBedCharge = 0;
+  let cnbCharge = 0;
 
-  // Step 2: Initialize totalHotelPrice
+  if (selectedPricing) {
+    const matchingPricing = packageDetails.pricing.find(
+      (p) => p.basePrice === selectedPricing
+    );
+
+    if (!matchingPricing) {
+      throw new Error("Invalid pricing selection");
+    }
+
+    if (guests !== matchingPricing.guestCount) {
+      throw new Error("Guest count mismatch for selected pricing");
+    }
+
+    mainPrice = selectedPricing * guests;
+
+    // Step 3: Add Extra Bed and CNB charges ONLY IF selectedPricing is valid
+    if (services?.extraBed) {
+      extraBedCharge = matchingPricing.extraBedCharge || 0;
+    }
+
+    if (services?.cnb) {
+      cnbCharge = matchingPricing.CNB || 0;
+    }
+  }
+
+  // Step 4: Initialize totalHotelPrice
   let totalHotelPrice = 0;
 
-  // Step 3: Calculate the total price for all selected hotels
+  // Step 5: Calculate the total price for all selected hotels
   for (const hotel of selectedHotels) {
     try {
-      // Validate hotel._id
       if (!hotel._id) {
         console.warn(`Missing hotel ID for one of the selected hotels:`, hotel);
         continue;
       }
 
-      // Fetch hotel details
       const hotelData = await hotelModel.findById(hotel._id);
       if (!hotelData) {
         console.warn(`Hotel not found for ID: ${hotel._id}`);
         continue;
       }
 
-      // Calculate the hotel price
       let price = hotelData.hotelPrice * hotel.room;
 
-      // Add price for additional adults
       if (hotel.adults > 1) {
         price += (hotel.adults - 1) * hotelData.hotelPrice * 0.85 * hotel.room;
       }
 
-      // Add price for children
       if (hotel.children > 0) {
         price += hotel.extraBed
           ? hotel.children * hotelData.hotelPrice * 0.75
           : hotel.children * hotelData.hotelPrice * 0.5;
       }
 
-      // Accumulate the total hotel price
       totalHotelPrice += price;
     } catch (error) {
       console.error(`Error processing hotel ID: ${hotel._id}`, error);
     }
   }
 
-  // Step 4: Calculate total cost
-  const totalCost = mainPrice + totalHotelPrice;
+  // Step 6: Calculate total cost (including extra bed & CNB charges ONLY if selectedPricing exists)
+  const totalCost =
+    mainPrice +
+    totalHotelPrice +
+    (selectedPricing ? extraBedCharge + cnbCharge : 0); // Add only if selectedPricing exists
 
-  // Step 5: Apply coupon if valid
+  // Step 7: Apply coupon if valid
   if (coupon?.id) {
     try {
       const couponDetails = await couponModel.findById(coupon.id);
@@ -223,30 +249,36 @@ const calculateTotalPrice = async ({
   return totalCost;
 };
 
+// Controller to verify amount
 const verifyAmount = async (req, res) => {
   try {
-    const { selectedHotels, Pack_id, guests, coupon } = req.body;
+    const {
+      selectedHotels,
+      Pack_id,
+      guests,
+      coupon,
+      selectedPricing,
+      services,
+    } = req.body;
 
-    // Validate input data
-    if (!Pack_id || !guests || !Array.isArray(selectedHotels)) {
+    if (!Pack_id || !guests) {
       return res.status(400).json({ error: "Invalid input data" });
     }
 
-    // Recalculate the total price
     const totalPrice = await calculateTotalPrice({
       selectedHotels,
-      Pack_id, // You need to pass Pack_id here, not basePrice
+      Pack_id,
       guests,
       coupon,
+      selectedPricing,
+      services,
     });
 
-    // Now that you have the totalPrice, return both totalPrice and order creation response
     const orderResponse = await createOrder(totalPrice);
 
-    // Return both responses in the response body
     return res.status(200).json({
       totalPrice,
-      order: orderResponse, // Assuming createOrder returns the order details
+      order: orderResponse,
     });
   } catch (error) {
     console.error("Error calculating price:", error);
