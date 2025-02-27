@@ -139,6 +139,7 @@ const deletePackage = async (req, res) => {
     });
   }
 };
+
 const calculateTotalPrice = async ({
   selectedHotels,
   Pack_id,
@@ -167,11 +168,15 @@ const calculateTotalPrice = async ({
       throw new Error("Invalid pricing selection");
     }
 
-    if (guests !== matchingPricing.guestCount) {
-      throw new Error("Guest count mismatch for selected pricing");
+    // **If perPerson is true, multiply by guests**
+    if (matchingPricing.perPerson) {
+      mainPrice = selectedPricing * guests; // Multiply selected price per guest
+    } else {
+      if (guests !== matchingPricing.guestCount) {
+        throw new Error("Guest count mismatch for selected pricing");
+      }
+      mainPrice = selectedPricing * guests;
     }
-
-    mainPrice = selectedPricing * guests;
 
     // Step 3: Add Extra Bed and CNB charges ONLY IF selectedPricing is valid
     if (services?.extraBed) {
@@ -248,6 +253,7 @@ const calculateTotalPrice = async ({
   // Return total cost if no valid coupon
   return totalCost;
 };
+
 
 // Controller to verify amount
 const verifyAmount = async (req, res) => {

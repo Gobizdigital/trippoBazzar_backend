@@ -26,6 +26,7 @@ const packageSchema = new Schema({
       extraPersonCharge: { type: Number },
       extraBedCharge: { type: Number },
       CNB: { type: Number },
+      perPerson: { type: Boolean },
     },
   ],
   whatsIncluded: {
