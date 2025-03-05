@@ -20,11 +20,11 @@ const packageSchema = new Schema({
       guestCount: { type: Number },
       packageType: {
         type: String,
-        enum: ["Standard", "Deluxe", "Super Deluxe", "Luxury"],
       },
       basePrice: { type: Number },
       extraPersonCharge: { type: Number },
       extraBedCharge: { type: Number },
+      CWB: { type: Number },
       CNB: { type: Number },
       perPerson: { type: Boolean },
     },

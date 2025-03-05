@@ -158,6 +158,7 @@ const calculateTotalPrice = async ({
   let mainPrice = packageDetails.price * guests; // Default price without selectedPricing
   let extraBedCharge = 0;
   let cnbCharge = 0;
+  let cwbCharge = 0;
 
   if (selectedPricing) {
     const matchingPricing = packageDetails.pricing.find(
@@ -185,6 +186,10 @@ const calculateTotalPrice = async ({
 
     if (services?.cnb) {
       cnbCharge = matchingPricing.CNB || 0;
+    }
+
+    if (services?.cwb) {
+      cwbCharge = matchingPricing.CWB || 0;
     }
   }
 
@@ -227,7 +232,7 @@ const calculateTotalPrice = async ({
   const totalCost =
     mainPrice +
     totalHotelPrice +
-    (selectedPricing ? extraBedCharge + cnbCharge : 0); // Add only if selectedPricing exists
+    (selectedPricing ? extraBedCharge + cnbCharge + cwbCharge : 0); // Add only if selectedPricing exists
 
   // Step 7: Apply coupon if valid
   if (coupon?.id) {
@@ -253,7 +258,6 @@ const calculateTotalPrice = async ({
   // Return total cost if no valid coupon
   return totalCost;
 };
-
 
 // Controller to verify amount
 const verifyAmount = async (req, res) => {
