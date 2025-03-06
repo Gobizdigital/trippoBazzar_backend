@@ -3,6 +3,9 @@ const auth = require("../auth/AuthValidation");
 const crypto = require("crypto");
 const couponModel = require("../models/CouponModel");
 const hotelModel = require("../models/HotelModel");
+const BookingModel = require("../models/BookingModel");
+const UserModel = require("../models/UserModel");
+const PaymentModel = require("../models/PaymentModel");
 const NodeCache = require("node-cache");
 const createRazorPayInstance = require("../utils/RazorPayConfig");
 const cache = new NodeCache({ stdTTL: 1800 });
@@ -269,12 +272,14 @@ const verifyAmount = async (req, res) => {
       coupon,
       selectedPricing,
       services,
+      userId,
     } = req.body;
 
     if (!Pack_id || !guests) {
       return res.status(400).json({ error: "Invalid input data" });
     }
 
+    // ✅ Step 1: Securely calculate total price
     const totalPrice = await calculateTotalPrice({
       selectedHotels,
       Pack_id,
@@ -284,14 +289,29 @@ const verifyAmount = async (req, res) => {
       services,
     });
 
-    const orderResponse = await createOrder(totalPrice);
+    // ✅ Step 2: Create Razorpay order
+    const order = await createOrder(totalPrice);
+
+    if (!order) {
+      return res.status(500).json({ error: "Failed to create order" });
+    }
+
+    // ✅ Step 3: Store `totalPrice` securely in the Payment model
+    const paymentRecord = await PaymentModel.create({
+      userId,
+      orderId: order.id,
+      packageId: Pack_id,
+      verifiedPrice: totalPrice, // 🔥 Securely stored
+      status: "Pending",
+    });
 
     return res.status(200).json({
-      totalPrice,
-      order: orderResponse,
+      success: true,
+      order, // ✅ Only return order details (not `totalPrice`)
+      packageId: Pack_id,
     });
   } catch (error) {
-    console.error("Error calculating price:", error);
+    console.error("Error verifying amount:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -326,26 +346,118 @@ const createOrder = async (totalPrice) => {
   }
 };
 
+// const verfiyPayment = async (req, res) => {
+//   try {
+//     const { order_id, payment_id, signature, userId, bookingData } = req.body;
+
+//     // Step 1: Generate the expected signature
+//     const expectedSignature = crypto
+//       .createHmac("sha256", process.env.RAZOR_KEY_SECRET)
+//       .update(order_id + "|" + payment_id)
+//       .digest("hex");
+
+//     // Step 2: Compare expected vs received signature
+//     if (expectedSignature !== signature) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Invalid signature" });
+//     }
+
+//     // Step 3: Payment verified - Create the booking securely
+//     const savedBooking = await BookingModel.create({
+//       ...bookingData,
+//       userId,
+//       PackageBookedStatus: "Booked",
+//       PackageBookedPaymentStatus: "Paid",
+//       RazorPayPaymentId: payment_id,
+//     });
+
+//     // Step 4: Update the User's BookingDetails Array
+//     const updatedUser = await UserModel.findByIdAndUpdate(
+//       userId, // User ID to find
+//       { $push: { BookingDetails: savedBooking._id } }, // Push booking ID into BookingDetails array
+//       { new: true, runValidators: false } // Return the updated user & skip validation
+//     );
+
+//     if (!updatedUser) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+//     }
+
+//     // Step 5: Return success response with booking details
+//     return res.status(201).json({
+//       success: true,
+//       message: "Payment verified, booking added successfully",
+//       data: savedBooking,
+//     });
+//   } catch (error) {
+//     console.error("Payment verification error:", error);
+//     return res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
+
 const verfiyPayment = async (req, res) => {
-  const { order_id, payment_id, signature } = req.body;
+  try {
+    const { order_id, payment_id, signature, userId, bookingData } = req.body;
 
-  const secret = process.env.RAZOR_KEY_SECRET;
-  const hmac = crypto.createHmac("sha256", secret);
-  hmac.update(order_id + "|" + payment_id);
+    // ✅ Step 1: Validate Razorpay Signature
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZOR_KEY_SECRET)
+      .update(`${order_id}|${payment_id}`)
+      .digest("hex");
 
-  const generateSignature = hmac.digest("hex");
-  if (generateSignature === signature) {
-    res.status(200).json({
-      message: "Payment verified successfully",
+    if (expectedSignature !== signature) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid payment signature" });
+    }
+
+    // ✅ Step 2: Fetch stored `totalPrice` from backend (Not from frontend)
+    const paymentRecord = await PaymentModel.findOne({ orderId: order_id });
+
+    if (!paymentRecord) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Payment record not found" });
+    }
+
+    const correctPrice = paymentRecord.verifiedPrice;
+
+    // ✅ Step 3: Ensure amount matches before booking
+    if (!correctPrice) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Price verification failed" });
+    }
+
+    // ✅ Step 4: Create Booking
+    const savedBooking = await BookingModel.create({
+      ...bookingData,
+      userId,
+      PackageBookedPrice: correctPrice,
+      PackageBookedStatus: "Booked",
+      PackageBookedPaymentStatus: "Paid",
+      RazorPayPaymentId: payment_id,
     });
-  } else if (generateSignature !== signature) {
-    res.status(401).json({
-      message: "Invalid signature",
+
+    // ✅ Step 5: Update Payment Record to `Paid`
+    paymentRecord.status = "Paid";
+    await paymentRecord.save();
+
+    // ✅ Step 6: Update User's Booking History
+    await UserModel.findByIdAndUpdate(userId, {
+      $push: { BookingDetails: savedBooking._id },
     });
-  } else {
-    res.status(400).json({
-      message: "Payment not Verified",
+
+    return res.status(201).json({
+      success: true,
+      message: "Payment verified & booking added successfully",
+      data: savedBooking,
     });
+  } catch (error) {
+    console.error("Payment verification error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

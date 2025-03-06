@@ -8,10 +8,13 @@ const bookingDetailsSchema = new Schema({
     ref: "Package",
     required: true,
   },
-  userId:{
+  userId: {
     type: Schema.Types.ObjectId,
     ref: "User",
   },
+
+  PackageStartDate: { type: Date },
+  PackageEndDate: { type: Date },
   TotalGuests: { type: Number },
   BookedHotels: [
     {
@@ -51,7 +54,7 @@ const bookingDetailsSchema = new Schema({
   },
   PackageBookedPaymentStatus: {
     type: String,
-    enum: ["Paid", "Unpaid"],
+    enum: ["Paid", "Pending", "Failed"],
     required: true,
   },
   RazorPayPaymentId: { type: String },

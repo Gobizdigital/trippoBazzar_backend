@@ -95,9 +95,14 @@ const getUserbyID = async (req, res) => {
   try {
     const id = req.params.id;
     const user = await userModel
-      .findById(id)
-      .lean()
-      .populate("WishListCountries WishListStates Coupons"); // Use .lean() for faster query
+    .findById(id)
+    .lean()
+    .populate("WishListCountries WishListStates Coupons")
+    .populate({
+      path: "BookingDetails",
+      populate: {
+        path: "PackageBooked", // Assuming this is a reference inside BookingDetails
+      }}).lean();
     if (user) {
       res
         .status(200)
