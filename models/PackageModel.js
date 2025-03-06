@@ -13,7 +13,6 @@ const packageSchema = new Schema({
   },
   price: {
     type: Number,
-    required: true,
   },
   pricing: [
     {

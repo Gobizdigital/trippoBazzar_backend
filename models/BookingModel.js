@@ -8,6 +8,10 @@ const bookingDetailsSchema = new Schema({
     ref: "Package",
     required: true,
   },
+  userId:{
+    type: Schema.Types.ObjectId,
+    ref: "User",
+  },
   TotalGuests: { type: Number },
   BookedHotels: [
     {

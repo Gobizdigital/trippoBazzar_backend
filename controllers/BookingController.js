@@ -8,10 +8,8 @@ const addBooking = async (req, res) => {
     // Step 1: Remove userId from req.body to avoid passing it during booking creation
     const { userId, ...bookingData } = req.body; // Destructure to remove userId
 
-    console.log(bookingData);
-
     // Step 2: Create the booking without userId in the request body
-    const savedBooking = await BookingModel.create(bookingData);
+    const savedBooking = await BookingModel.create({ ...bookingData, userId });
 
     if (!savedBooking) {
       return res.status(400).json({ message: "Incomplete Booking Details" });

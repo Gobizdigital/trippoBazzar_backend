@@ -95,7 +95,7 @@ const getStateByName = async (req, res) => {
       .findOne({ StateName: name }) // Find state by name
       .populate({
         path: "Packages",
-        select: "title description price whatsIncluded MainPhotos", // Specify only the fields you need
+        select: "title description price whatsIncluded MainPhotos pricing", // Specify only the fields you need
       });
 
     if (State) {
