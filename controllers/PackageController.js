@@ -65,6 +65,45 @@ const getAllPackages = async (req, res) => {
   }
 };
 
+const getAllPackagesRandom = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10; // Default limit is 10 if not provided
+
+    // Check if cached random packages exist
+    const cacheKey = `randomPackages_${limit}`;
+    const cachedPackages = cache.get(cacheKey);
+
+    if (cachedPackages) {
+      return res.status(200).json({
+        message: "Random packages retrieved successfully from cache",
+        data: cachedPackages,
+      });
+    }
+
+    // Fetch random packages from the database
+    const packages = await packageModel.aggregate([
+      { $sample: { size: limit } },
+    ]);
+
+    if (packages.length > 0) {
+      // Store limited random data in cache
+      cache.set(cacheKey, packages);
+
+      res.status(200).json({
+        message: "Random packages retrieved successfully",
+        data: packages,
+      });
+    } else {
+      res.status(404).json({ message: "No Packages found" });
+    }
+  } catch (error) {
+    res.status(500).json({
+      message: "Error in fetching Packages",
+      error: error.message,
+    });
+  }
+};
+
 const getPackageById = async (req, res) => {
   try {
     const packageId = req.params.id;
@@ -469,5 +508,6 @@ module.exports = {
   deletePackage,
   verifyAmount,
   createOrder,
+  getAllPackagesRandom,
   verfiyPayment,
 };
