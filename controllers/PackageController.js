@@ -80,9 +80,49 @@ const getAllPackagesRandom = async (req, res) => {
       });
     }
 
-    // Fetch random packages from the database
+    // Fetch random packages with continent, country, and state name
     const packages = await packageModel.aggregate([
-      { $sample: { size: limit } },
+      { $sample: { size: limit } }, // Randomly select packages
+      {
+        $lookup: {
+          from: "states",
+          localField: "_id",
+          foreignField: "Packages",
+          as: "stateData",
+        },
+      },
+      { $unwind: { path: "$stateData", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "countries",
+          localField: "stateData._id",
+          foreignField: "States",
+          as: "countryData",
+        },
+      },
+      { $unwind: { path: "$countryData", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "continents",
+          localField: "countryData._id",
+          foreignField: "Countries",
+          as: "continentData",
+        },
+      },
+      { $unwind: { path: "$continentData", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          price: 1,
+          pricing: 1,
+          MainPhotos: 1,
+          StateName: "$stateData.StateName", // Get State Name
+          CountryName: "$countryData.CountryName", // Get Country Name
+          ContinentName: "$continentData.ContinentName", // Get Continent Name
+        },
+      },
     ]);
 
     if (packages.length > 0) {
