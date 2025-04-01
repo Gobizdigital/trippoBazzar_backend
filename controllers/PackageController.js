@@ -529,6 +529,20 @@ const verfiyPayment = async (req, res) => {
       $push: { BookingDetails: savedBooking._id },
     });
 
+    // ✅ Step 7: Remove used coupon from user's account
+    // Get the coupon ID directly from the request body if available
+    const couponId =
+      req.body.bookingData.CouponDetails._id ||
+      req.body.couponId ||
+      paymentRecord.couponId;
+
+    if (couponId) {
+      // Remove the coupon from user's Coupons array
+      await UserModel.findByIdAndUpdate(userId, {
+        $pull: { Coupons: couponId },
+      });
+    }
+
     return res.status(201).json({
       success: true,
       message: "Payment verified & booking added successfully",

@@ -30,6 +30,7 @@ const bookingDetailsSchema = new Schema({
       hotelLocation: { type: String },
     },
   ],
+  CouponDetails: { type: Object },
   PackageBookedDate: { type: Date, default: Date.now() },
   PackageBookedPrice: { type: Number, required: true },
   GuestDetails: [
