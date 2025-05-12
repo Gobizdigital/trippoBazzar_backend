@@ -17,9 +17,63 @@ const addContinent = async (req, res) => {
       res.status(400).json({ message: "Incomplete Continent Details" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error in creating", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error in creating", error: error.message });
   }
 };
+
+const getContinentByQuery = async (req, res) => {
+  try {
+    const { fields } = req.query;
+    const projection = fields ? fields.split(",").join(" ") : "";
+
+    let query = continentModel.find({}, projection);
+
+    if (fields?.includes("Countries")) {
+      query = query.populate({
+        path: "Countries",
+        select: "CountryName States", // fetch CountryName + States field
+        populate: {
+          path: "States",
+          select: "StateName", // only get StateName from States
+        },
+      });
+    }
+
+    let continents = await query.lean();
+
+    // 🔍 Keep States only for India
+    continents = continents.map((continent) => {
+      if (!continent.Countries) return continent;
+
+      continent.Countries = continent.Countries.map((country) => {
+        if (country.CountryName === "India") {
+          return country; // Keep States populated
+        } else {
+          // Remove States from other countries
+          const { States, ...rest } = country;
+          return rest;
+        }
+      });
+
+      return continent;
+    });
+
+    if (continents.length > 0) {
+      res.status(200).json({
+        message: "Continents retrieved successfully",
+        data: continents,
+      });
+    } else {
+      res.status(404).json({ message: "No continent found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching continents", error: error.message });
+  }
+};
+
+
 
 const getAllContinent = async (req, res) => {
   try {
@@ -72,22 +126,30 @@ const getAllContinent = async (req, res) => {
       res.status(404).json({ message: "No continent found" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error in fetching continent", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error in fetching continent", error: error.message });
   }
 };
 
 const getContinentById = async (req, res) => {
   try {
     const ContinentId = req.params.id;
-    const Continent = await continentModel.findById(ContinentId).populate("Countries");
+    const Continent = await continentModel
+      .findById(ContinentId)
+      .populate("Countries");
 
     if (Continent) {
-      res.status(200).json({ message: "Continent retrieved successfully", data: Continent });
+      res
+        .status(200)
+        .json({ message: "Continent retrieved successfully", data: Continent });
     } else {
       res.status(404).json({ message: "Continent not found" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error in fetching Continent", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error in fetching Continent", error: error.message });
   }
 };
 
@@ -106,18 +168,24 @@ const getContinentByName = async (req, res) => {
     //   });
     // }
 
-    const Continent = await continentModel.findOne({ name }).populate("Countries");
+    const Continent = await continentModel
+      .findOne({ name })
+      .populate("Countries");
 
     if (Continent) {
       // Cache the retrieved continent data
       // cache.set(cacheKey, Continent);
 
-      return res.status(200).json({ message: "Continent retrieved successfully", data: Continent });
+      return res
+        .status(200)
+        .json({ message: "Continent retrieved successfully", data: Continent });
     } else {
       return res.status(404).json({ message: "Continent not found" });
     }
   } catch (error) {
-    return res.status(500).json({ message: "Error in fetching Continent", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Error in fetching Continent", error: error.message });
   }
 };
 
@@ -133,29 +201,45 @@ const updateContinent = async (req, res) => {
     );
 
     if (updatedContinent) {
-      res.status(200).json({ message: "Continent updated successfully", data: updatedContinent });
+      res
+        .status(200)
+        .json({
+          message: "Continent updated successfully",
+          data: updatedContinent,
+        });
       // cache.del("allContinents");
     } else {
       res.status(404).json({ message: "Continent not found" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error in updating Continent", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error in updating Continent", error: error.message });
   }
 };
 
 const deleteContinent = async (req, res) => {
   try {
     const ContinentId = req.params.id;
-    const deletedContinent = await continentModel.findByIdAndDelete(ContinentId);
+    const deletedContinent = await continentModel.findByIdAndDelete(
+      ContinentId
+    );
 
     if (deletedContinent) {
-      res.status(200).json({ message: "Continent deleted successfully", data: deletedContinent });
+      res
+        .status(200)
+        .json({
+          message: "Continent deleted successfully",
+          data: deletedContinent,
+        });
       // cache.del("allContinents");
     } else {
       res.status(404).json({ message: "Continent not found" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error in deleting Continent", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error in deleting Continent", error: error.message });
   }
 };
 
@@ -163,6 +247,7 @@ module.exports = {
   addContinent,
   getAllContinent,
   getContinentById,
+  getContinentByQuery,
   getContinentByName,
   updateContinent,
   deleteContinent,
