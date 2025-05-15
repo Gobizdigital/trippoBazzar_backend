@@ -276,44 +276,44 @@ const calculateTotalPrice = async ({
   }
 
   // Step 4: Initialize totalHotelPrice
-  let totalHotelPrice = 0;
+  // let totalHotelPrice = 0;
 
-  // Step 5: Calculate the total price for all selected hotels
-  for (const hotel of selectedHotels) {
-    try {
-      if (!hotel._id) {
-        console.warn(`Missing hotel ID for one of the selected hotels:`, hotel);
-        continue;
-      }
+  // // Step 5: Calculate the total price for all selected hotels
+  // for (const hotel of selectedHotels) {
+  //   try {
+  //     if (!hotel._id) {
+  //       console.warn(`Missing hotel ID for one of the selected hotels:`, hotel);
+  //       continue;
+  //     }
 
-      const hotelData = await hotelModel.findById(hotel._id);
-      if (!hotelData) {
-        console.warn(`Hotel not found for ID: ${hotel._id}`);
-        continue;
-      }
+  //     const hotelData = await hotelModel.findById(hotel._id);
+  //     if (!hotelData) {
+  //       console.warn(`Hotel not found for ID: ${hotel._id}`);
+  //       continue;
+  //     }
 
-      let price = hotelData.hotelPrice * hotel.room;
+  //     let price = hotelData.hotelPrice * hotel.room;
 
-      if (hotel.adults > 1) {
-        price += (hotel.adults - 1) * hotelData.hotelPrice * 0.85 * hotel.room;
-      }
+  //     if (hotel.adults > 1) {
+  //       price += (hotel.adults - 1) * hotelData.hotelPrice * 0.85 * hotel.room;
+  //     }
 
-      if (hotel.children > 0) {
-        price += hotel.extraBed
-          ? hotel.children * hotelData.hotelPrice * 0.75
-          : hotel.children * hotelData.hotelPrice * 0.5;
-      }
+  //     if (hotel.children > 0) {
+  //       price += hotel.extraBed
+  //         ? hotel.children * hotelData.hotelPrice * 0.75
+  //         : hotel.children * hotelData.hotelPrice * 0.5;
+  //     }
 
-      totalHotelPrice += price;
-    } catch (error) {
-      console.error(`Error processing hotel ID: ${hotel._id}`, error);
-    }
-  }
+  //     totalHotelPrice += price;
+  //   } catch (error) {
+  //     console.error(`Error processing hotel ID: ${hotel._id}`, error);
+  //   }
+  // }
 
   // Step 6: Calculate total cost (including extra bed & CNB charges ONLY if selectedPricing exists)
   const totalCost =
     mainPrice +
-    totalHotelPrice +
+    // totalHotelPrice +
     (selectedPricing ? extraBedCharge + cnbCharge + cwbCharge : 0); // Add only if selectedPricing exists
 
   // Step 7: Apply coupon if valid
