@@ -78,46 +78,166 @@ const getCountryById = async (req, res) => {
   }
 };
 
+// const getCountryByName = async (req, res) => {
+//   try {
+//     const { name } = req.params; // Get country name from URL params
+//     const cacheKey = `country_${name}`; // Create a unique cache key for each country
+
+//     // Check if country data is cached
+//     const cachedCountry = cache.get(cacheKey);
+
+//     if (cachedCountry) {
+//       return res.status(200).json({
+//         message: "Country retrieved successfully from cache",
+//         data: cachedCountry,
+//       });
+//     }
+
+//     // Fetch country data from the database
+//     const country = await countryModel
+//       .findOne({ CountryName: name }) // Find country by name
+//       .populate({
+//         path: "States",
+//         select: "Packages StatePhotoUrl StateName",
+//         populate: {
+//           path: "Packages",
+//           select: "price",
+//         },
+//       })
+//       .lean(); // Convert the result to a plain JavaScript object for easier manipulation
+
+//     if (country) {
+//       // Process the data to limit to one state and one package
+//       const processedCountry = {
+//         ...country,
+//         States: country.States.map((state) => ({
+//           ...state,
+//           Packages: state.Packages.slice(0, 1), // Limit to the first package for the state
+//         })),
+//       };
+
+//       // Cache the retrieved country data
+//       cache.set(cacheKey, processedCountry);
+
+//       res.status(200).json({
+//         message: "Country retrieved successfully",
+//         data: processedCountry,
+//       });
+//     } else {
+//       res.status(404).json({ message: "Country not found" });
+//     }
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Error in fetching country",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const getCountryByName = async (req, res) => {
   try {
-    const { name } = req.params; // Get country name from URL params
-    const cacheKey = `country_${name}`; // Create a unique cache key for each country
+    const { name } = req.params;
+    const cacheKey = `country_${name}`;
 
     // Check if country data is cached
     const cachedCountry = cache.get(cacheKey);
 
-    if (cachedCountry) {
-      return res.status(200).json({
-        message: "Country retrieved successfully from cache",
-        data: cachedCountry,
-      });
-    }
+    // if (cachedCountry) {
+    //   return res.status(200).json({
+    //     message: "Country retrieved successfully from cache",
+    //     data: cachedCountry,
+    //   });
+    // }
 
     // Fetch country data from the database
     const country = await countryModel
-      .findOne({ CountryName: name }) // Find country by name
+      .findOne({ CountryName: name })
       .populate({
         path: "States",
         select: "Packages StatePhotoUrl StateName",
         populate: {
           path: "Packages",
-          select: "price",
+          select: "price pricing title", // Include title for better identification
         },
       })
-      .lean(); // Convert the result to a plain JavaScript object for easier manipulation
+      .lean();
 
     if (country) {
       // Process the data to limit to one state and one package
       const processedCountry = {
         ...country,
-        States: country.States.map((state) => ({
-          ...state,
-          Packages: state.Packages.slice(0, 1), // Limit to the first package for the state
-        })),
+        States: country.States.map((state) => {
+          // First process all packages to ensure they have valid pricing
+          const processedPackages = state.Packages.map((pkg) => {
+            // Create a new package object to avoid modifying the original
+            const processedPkg = { ...pkg };
+
+            // Try to find the lowest basePrice from pricing array
+            let finalPrice = undefined;
+
+            // Check if pricing array exists and has items
+            if (processedPkg.pricing && processedPkg.pricing.length > 0) {
+              // Filter out invalid basePrice values and find the minimum
+              const validPrices = processedPkg.pricing
+                .filter(
+                  (p) =>
+                    p.basePrice !== undefined &&
+                    p.basePrice !== null &&
+                    !isNaN(p.basePrice)
+                )
+                .map((p) => p.basePrice);
+
+              if (validPrices.length > 0) {
+                finalPrice = Math.min(...validPrices);
+              }
+            }
+
+            // If no valid basePrice was found, fall back to the existing price field
+            if (
+              finalPrice === undefined ||
+              finalPrice === null ||
+              isNaN(finalPrice)
+            ) {
+              finalPrice = processedPkg.price;
+            }
+
+            // Update the price field with our final determined price
+            processedPkg.price = finalPrice;
+
+            return processedPkg;
+          });
+
+          // Filter packages to only include those with valid pricing
+          const validPackages = processedPackages.filter((pkg) => {
+            return (
+              pkg.price !== undefined && pkg.price !== null && !isNaN(pkg.price)
+            );
+          });
+
+          // If we have valid packages, select the first one
+          // If not, return an empty array for this state's packages
+          return {
+            ...state,
+            Packages: validPackages.length > 0 ? [validPackages[0]] : [],
+          };
+        }),
       };
+
+      // Filter out states that don't have any packages with valid pricing
+      processedCountry.States = processedCountry.States.filter(
+        (state) => state.Packages.length > 0
+      );
 
       // Cache the retrieved country data
       cache.set(cacheKey, processedCountry);
+
+      // Check if we have any states with packages after filtering
+      if (processedCountry.States.length === 0) {
+        return res.status(404).json({
+          message:
+            "No states with valid package pricing found for this country",
+        });
+      }
 
       res.status(200).json({
         message: "Country retrieved successfully",
