@@ -5,6 +5,7 @@ const router = require("express").Router();
 // User creation route
 router.post("/", auth.protect, auth.restrictToAdmin,continentController.addContinent);
 router.get("/", continentController.getAllContinent);
+router.get("/all/limit", continentController.getAllContinentByLimit);
 router.get("/:id", continentController.getContinentById);
 router.get("/fields/query", continentController.getContinentByQuery);
 router.get("/name/:name", continentController.getContinentByName);

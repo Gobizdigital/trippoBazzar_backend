@@ -69,71 +69,70 @@ const getContinentByQuery = async (req, res) => {
       res.status(404).json({ message: "No continent found" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error fetching continents", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching continents", error: error.message });
   }
 };
 
-
-
-// const getAllContinent = async (req, res) => {
-//   try {
-//     // Check if the data is already cached
-//     // const cachedContinents = cache.get("allContinents");
-
-//     // if (cachedContinents) {
-//     //   return res.status(200).json({
-//     //     message: "Continent retrieved successfully from cache",
-//     //     data: cachedContinents,
-//     //   });
-//     // }
-
-//     // Fetch from the database
-//     const continent = await continentModel
-//       .find()
-//       .populate({
-//         path: "Countries",
-//         populate: {
-//           path: "States",
-//           select: "Packages",
-//           populate: {
-//             path: "Packages",
-//             select: "price description",
-//           },
-//         },
-//       })
-//       .lean();
-
-//     const processedContinents = continent.map((continent) => ({
-//       ...continent,
-//       Countries: continent.Countries.map((country) => ({
-//         ...country,
-//         States: country.States.slice(0, 1).map((state) => ({
-//           ...state,
-//           Packages: state.Packages.slice(0, 1),
-//         })),
-//       })),
-//     }));
-
-//     if (processedContinents.length > 0) {
-//       // Store the processed data in the cache
-//       // cache.set("allContinents", processedContinents);
-
-//       res.status(200).json({
-//         message: "Continent retrieved successfully",
-//         data: processedContinents,
-//       });
-//     } else {
-//       res.status(404).json({ message: "No continent found" });
-//     }
-//   } catch (error) {
-//     res
-//       .status(500)
-//       .json({ message: "Error in fetching continent", error: error.message });
-//   }
-// };
-
-
 const getAllContinent = async (req, res) => {
+  try {
+    // Check if the data is already cached
+    // const cachedContinents = cache.get("allContinents");
+
+    // if (cachedContinents) {
+    //   return res.status(200).json({
+    //     message: "Continent retrieved successfully from cache",
+    //     data: cachedContinents,
+    //   });
+    // }
+
+    // Fetch from the database
+    const continent = await continentModel
+      .find()
+      .populate({
+        path: "Countries",
+        populate: {
+          path: "States",
+          select: "Packages",
+          populate: {
+            path: "Packages",
+            select: "price description",
+          },
+        },
+      })
+      .lean();
+
+    const processedContinents = continent.map((continent) => ({
+      ...continent,
+      Countries: continent.Countries.map((country) => ({
+        ...country,
+        States: country.States.slice(0, 1).map((state) => ({
+          ...state,
+          Packages: state.Packages.slice(0, 1),
+        })),
+      })),
+    }));
+
+    if (processedContinents.length > 0) {
+      // Store the processed data in the cache
+      // cache.set("allContinents", processedContinents);
+
+      res.status(200).json({
+        message: "Continent retrieved successfully",
+        data: processedContinents,
+      });
+    } else {
+      res.status(404).json({ message: "No continent found" });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error in fetching continent", error: error.message });
+  }
+};
+
+const getAllContinentByLimit = async (req, res) => {
   try {
     // Fetch all continents from the database
     const allContinents = await continentModel.find().lean();
@@ -413,12 +412,10 @@ const updateContinent = async (req, res) => {
     );
 
     if (updatedContinent) {
-      res
-        .status(200)
-        .json({
-          message: "Continent updated successfully",
-          data: updatedContinent,
-        });
+      res.status(200).json({
+        message: "Continent updated successfully",
+        data: updatedContinent,
+      });
       // cache.del("allContinents");
     } else {
       res.status(404).json({ message: "Continent not found" });
@@ -438,12 +435,10 @@ const deleteContinent = async (req, res) => {
     );
 
     if (deletedContinent) {
-      res
-        .status(200)
-        .json({
-          message: "Continent deleted successfully",
-          data: deletedContinent,
-        });
+      res.status(200).json({
+        message: "Continent deleted successfully",
+        data: deletedContinent,
+      });
       // cache.del("allContinents");
     } else {
       res.status(404).json({ message: "Continent not found" });
@@ -458,6 +453,7 @@ const deleteContinent = async (req, res) => {
 module.exports = {
   addContinent,
   getAllContinent,
+  getAllContinentByLimit,
   getContinentById,
   getContinentByQuery,
   getContinentByName,

@@ -27,7 +27,6 @@ const protect = async (req, res, next) => {
 
     // Verifying the token
     const decode = await promisify(jwt.verify)(token, jwtSecret);
-    console.log(decode);
 
     // Find the user based on the decoded ID
     const freshUser = await userModel.findById(decode.id);
