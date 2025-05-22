@@ -66,6 +66,7 @@ const bookingDetailsSchema = new Schema({
   GSTNumber: { type: String },
   GSTAddress: { type: String },
   GSTCity: { type: String },
+  SpecialRemarks: { type: String },
 });
 
 // Export the BookingDetails model

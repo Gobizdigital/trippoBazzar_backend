@@ -65,6 +65,70 @@ const getAllPackages = async (req, res) => {
   }
 };
 
+const getAllPackagesByQuery = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 9,
+      search,
+      sortBy = "title",
+      sortDirection = "asc",
+    } = req.query;
+
+    // Parse query parameters
+    const parsedPage = Number.parseInt(page);
+    const parsedLimit = Number.parseInt(limit);
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    // Build the query for filtering
+    const query = {};
+
+    // Handle search term
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    // Build sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortDirection === "desc" ? -1 : 1;
+
+    // Fetch packages with pagination
+    const packages = await packageModel
+      .find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parsedLimit)
+      .lean();
+
+    // Get the total count of packages for pagination metadata
+    const totalCount = await packageModel.countDocuments(query);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / parsedLimit);
+
+    // Cache only if fetching all packages without filters
+    if (!search && parsedPage === 1 && parsedLimit >= totalCount) {
+      cache.set("allPackages", packages);
+    }
+
+    res.status(200).json({
+      message: "Packages retrieved successfully",
+      data: packages,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error in fetching Packages",
+      error: error.message,
+    });
+  }
+};
+
 const getAllPackagesRandom = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10; // Default limit is 10 if not provided
@@ -557,6 +621,7 @@ const verfiyPayment = async (req, res) => {
 module.exports = {
   addPackage,
   getAllPackages,
+  getAllPackagesByQuery,
   getPackageById,
   updatePackage,
   deletePackage,

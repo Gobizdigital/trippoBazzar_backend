@@ -9,6 +9,7 @@ router.post(
   packageController.addPackage
 );
 router.get("/", packageController.getAllPackages);
+router.get("/fields/query", packageController.getAllPackagesByQuery);
 router.get("/query", packageController.getAllPackagesRandom);
 router.get("/:id", packageController.getPackageById);
 router.put("/:id", packageController.updatePackage);

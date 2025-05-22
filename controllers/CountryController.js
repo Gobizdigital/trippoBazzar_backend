@@ -57,6 +57,70 @@ const getAllCountries = async (req, res) => {
   }
 };
 
+const getAllCountriesByQuery = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = "CountryName",
+      sortDirection = "asc"
+    } = req.query;
+
+    // Parse query parameters
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    // Build the query for filtering
+    const query = {};
+
+    // Handle search term
+    if (search) {
+      query.CountryName = { $regex: search, $options: "i" };
+    }
+
+    // Build sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortDirection === "desc" ? -1 : 1;
+
+    // Fetch countries with pagination and populate the States field
+    const countries = await countryModel.find(query)
+      .populate("States")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parsedLimit)
+      .lean();
+
+    // Get the total count of countries for pagination metadata
+    const totalCount = await countryModel.countDocuments(query);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / parsedLimit);
+
+    // Cache only if fetching all countries without filters
+    if (!search && parsedPage === 1 && parsedLimit >= totalCount) {
+      cache.set("allCountries", countries);
+    }
+
+    res.status(200).json({
+      message: "Countries retrieved successfully",
+      data: countries,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error in fetching countries",
+      error: error.message,
+    });
+  }
+};
+
 const getCountryById = async (req, res) => {
   try {
     const countryId = req.params.id; // Get country ID from URL params
@@ -309,6 +373,7 @@ module.exports = {
   getAllCountries,
   getCountryById,
   getCountryByName,
+  getAllCountriesByQuery,
   updateCountry,
   deleteCountry,
 };

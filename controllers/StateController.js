@@ -54,6 +54,70 @@ const getAllStates = async (req, res) => {
   }
 };
 
+const getAllStatesByQuery = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, sortBy = "StateName", sortDirection = "asc" } = req.query
+
+    // Check if we should return cached data (only for non-paginated, non-filtered requests)
+    if (!page && !limit && !search && !sortBy && !sortDirection) {
+      const cachedStates = cache.get("allStates")
+      if (cachedStates) {
+        return res.status(200).json({
+          message: "States retrieved successfully from cache",
+          data: cachedStates,
+        })
+      }
+    }
+
+    // Parse query parameters
+    const parsedPage = Number.parseInt(page)
+    const parsedLimit = Number.parseInt(limit)
+    const skip = (parsedPage - 1) * parsedLimit
+
+    // Build the query for filtering
+    const query = {}
+
+    // Handle search term
+    if (search) {
+      query.StateName = { $regex: search, $options: "i" }
+    }
+
+    // Build sort options
+    const sortOptions = {}
+    sortOptions[sortBy] = sortDirection === "desc" ? -1 : 1
+
+    // Fetch states with pagination
+    const states = await stateModel.find(query).sort(sortOptions).skip(skip).limit(parsedLimit).lean()
+
+    // Get the total count of states for pagination metadata
+    const totalCount = await stateModel.countDocuments(query)
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / parsedLimit)
+
+    // Cache only if fetching all states without filters
+    if (!search && parsedPage === 1 && parsedLimit >= totalCount) {
+      cache.set("allStates", states)
+    }
+
+    res.status(200).json({
+      message: "States retrieved successfully",
+      data: states,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      },
+    })
+  } catch (error) {
+    res.status(500).json({
+      message: "Error in fetching States",
+      error: error.message,
+    })
+  }
+}
+
 const getStateById = async (req, res) => {
   try {
     const stateId = req.params.id;
@@ -170,6 +234,7 @@ const deleteState = async (req, res) => {
 module.exports = {
   addState,
   getAllStates,
+  getAllStatesByQuery,
   getStateById,
   getStateByName,
   updateState,

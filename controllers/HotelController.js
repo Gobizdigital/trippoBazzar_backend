@@ -39,6 +39,59 @@ const getAllHotels = async (req, res) => {
   }
 };
 
+const getAllHotelsByQuery = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, sortBy = "hotelName", sortDirection = "asc" } = req.query
+
+    // Parse query parameters
+    const parsedPage = Number.parseInt(page)
+    const parsedLimit = Number.parseInt(limit)
+    const skip = (parsedPage - 1) * parsedLimit
+
+    // Build the query for filtering
+    const query = {}
+
+    // Handle search term
+    if (search) {
+      query.hotelName = { $regex: search, $options: "i" }
+    }
+
+    // Build sort options
+    const sortOptions = {}
+    sortOptions[sortBy] = sortDirection === "desc" ? -1 : 1
+
+    // Fetch hotels with pagination
+    const hotels = await hotelModel.find(query).sort(sortOptions).skip(skip).limit(parsedLimit).lean()
+
+    // Get the total count of hotels for pagination metadata
+    const totalCount = await hotelModel.countDocuments(query)
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / parsedLimit)
+
+    // Cache only if fetching all hotels without filters
+    if (!search && parsedPage === 1 && parsedLimit >= totalCount) {
+      cache.set("allHotels", hotels)
+    }
+
+    res.status(200).json({
+      message: "Hotels retrieved successfully",
+      data: hotels,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      },
+    })
+  } catch (error) {
+    res.status(500).json({
+      message: "Error in fetching Hotels",
+      error: error.message,
+    })
+  }
+}
+
 const updateAllHotels = async (req, res) => {
   try {
     const updateData = req.body;
@@ -127,6 +180,7 @@ const deleteHotel = async (req, res) => {
 module.exports = {
   addHotel,
   getAllHotels,
+  getAllHotelsByQuery,
   getHotelById,
   updateAllHotels,
   updateHotel,

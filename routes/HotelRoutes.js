@@ -4,6 +4,7 @@ const router = require("express").Router();
 
 router.post("/", auth.protect, auth.restrictToAdmin, hotelController.addHotel);
 router.get("/", hotelController.getAllHotels);
+router.get("/fields/query", hotelController.getAllHotelsByQuery);
 router.get("/:id", hotelController.getHotelById);
 router.put("/all/updateAll", hotelController.updateAllHotels);
 router.put(
