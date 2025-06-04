@@ -1,6 +1,5 @@
 const BookingModel = require("../models/BookingModel");
 const UserModel = require("../models/UserModel");
-const auth = require("../auth/AuthValidation");
 require("dotenv").config();
 
 const addBooking = async (req, res) => {
@@ -43,14 +42,76 @@ const addBooking = async (req, res) => {
 
 const getAllBookings = async (req, res) => {
   try {
-    const Bookings = await BookingModel.find();
-    if (Bookings.length > 0) {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+    const search = req.query.search || "";
+    const status = req.query.status || "";
+    const paymentStatus = req.query.paymentStatus || "";
+
+    const skip = (page - 1) * limit;
+
+    // Build search query
+    let searchQuery = {};
+
+    if (search) {
+      searchQuery.$or = [
+        { ContactEmail: { $regex: search, $options: "i" } },
+        { ContactNumber: { $regex: search, $options: "i" } },
+        { "GuestDetails.GuestName": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (status) {
+      searchQuery.PackageBookedStatus = status;
+    }
+
+    if (paymentStatus) {
+      searchQuery.PackageBookedPaymentStatus = paymentStatus;
+    }
+
+    // Get total count for pagination
+    const totalBookings = await BookingModel.countDocuments(searchQuery);
+
+    // Get bookings with pagination and populate references
+    const bookings = await BookingModel.find(searchQuery)
+      .populate(
+        "PackageBooked",
+        "title description price whatsIncluded dayDescription specialInstruction conditionOfTravel thingsToMaintain MainPhotos policies termsAndConditions"
+      )
+
+      .populate("userId", "FullName Email")
+      .sort({ PackageBookedDate: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalBookings / limit);
+
+    if (bookings.length > 0) {
       res.status(200).json({
         message: "Bookings retrieved successfully",
-        data: Bookings,
+        data: bookings,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalBookings,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          limit,
+        },
       });
     } else {
-      res.status(404).json({ message: "No Bookings found" });
+      res.status(404).json({
+        message: "No Bookings found",
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalBookings: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+          limit,
+        },
+      });
     }
   } catch (error) {
     res.status(500).json({
@@ -62,20 +123,23 @@ const getAllBookings = async (req, res) => {
 
 const getBookingById = async (req, res) => {
   try {
-    const BookingId = req.params.id;
-    const Booking = await BookingModel.findById(BookingId);
+    const { id } = req.params;
 
-    if (Booking) {
-      res.status(200).json({
-        message: "Booking retrieved successfully",
-        data: Booking,
-      });
-    } else {
-      res.status(404).json({ message: "Booking not found" });
+    const booking = await BookingModel.findById(id)
+      .populate("PackageBooked")
+      .populate("userId", "name email phone");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
+
+    res.status(200).json({
+      message: "Booking retrieved successfully",
+      data: booking,
+    });
   } catch (error) {
     res.status(500).json({
-      message: "Error in fetching Booking",
+      message: "Error in fetching booking details",
       error: error.message,
     });
   }
