@@ -24,38 +24,40 @@ if (!isMaster) {
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      
+
       const allowedOrigins = [
         "https://trippobazaar.com",
+        /^https:\/\/.*\.trippobazaar\.com$/,
+        "https://www.trippobazaar.com", // Add www version
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
       ];
-      
+
       // Check if the origin is in the allowed list
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
         // For development, you might want to allow all origins
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === "development") {
           callback(null, true);
         } else {
-          callback(new Error('Not allowed by CORS'));
+          callback(new Error("Not allowed by CORS"));
         }
       }
     },
     credentials: true, // Allow cookies to be sent
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    optionsSuccessStatus: 200, // Some legacy browsers choke on 204
   };
 
   app.use(cors(corsOptions));
 
   // Handle preflight requests
-  app.options('*', cors(corsOptions));
+  app.options("*", cors(corsOptions));
 
   // Require Routes
   const userRoutes = require("./routes/UserRoutes");
@@ -73,7 +75,7 @@ if (!isMaster) {
     res.json({
       message: "API is running...",
       worker: process.pid,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   });
 
@@ -84,7 +86,7 @@ if (!isMaster) {
       worker: process.pid,
       uptime: process.uptime(),
       memory: process.memoryUsage(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   });
 
@@ -102,19 +104,22 @@ if (!isMaster) {
 
   // Error handling middleware for CORS
   app.use((err, req, res, next) => {
-    if (err.message === 'Not allowed by CORS') {
+    if (err.message === "Not allowed by CORS") {
       res.status(403).json({
-        error: 'CORS Error',
-        message: 'Origin not allowed',
+        error: "CORS Error",
+        message: "Origin not allowed",
         origin: req.headers.origin,
-        worker: process.pid
+        worker: process.pid,
       });
     } else {
       console.error(`Worker ${process.pid} error:`, err);
       res.status(500).json({
-        error: 'Internal Server Error',
+        error: "Internal Server Error",
         worker: process.pid,
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+        message:
+          process.env.NODE_ENV === "development"
+            ? err.message
+            : "Something went wrong",
       });
     }
   });
@@ -140,7 +145,9 @@ if (!isMaster) {
     }
 
     if (retries === 0) {
-      console.error(`Worker ${process.pid} could not connect to MongoDB after multiple attempts.`);
+      console.error(
+        `Worker ${process.pid} could not connect to MongoDB after multiple attempts.`
+      );
       process.exit(1); // Exit process if connection fails
     }
   };
@@ -149,7 +156,9 @@ if (!isMaster) {
 
   // Graceful shutdown for worker processes
   process.on("SIGTERM", () => {
-    console.log(`Worker ${process.pid} received SIGTERM, shutting down gracefully`);
+    console.log(
+      `Worker ${process.pid} received SIGTERM, shutting down gracefully`
+    );
     mongoose.connection.close(() => {
       console.log(`Worker ${process.pid} MongoDB connection closed`);
       process.exit(0);
@@ -157,7 +166,9 @@ if (!isMaster) {
   });
 
   process.on("SIGINT", () => {
-    console.log(`Worker ${process.pid} received SIGINT, shutting down gracefully`);
+    console.log(
+      `Worker ${process.pid} received SIGINT, shutting down gracefully`
+    );
     mongoose.connection.close(() => {
       console.log(`Worker ${process.pid} MongoDB connection closed`);
       process.exit(0);
