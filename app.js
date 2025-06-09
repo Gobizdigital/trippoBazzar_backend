@@ -17,20 +17,74 @@ require("dotenv").config()
 const app = express()
 const PORT = process.env.PORT || 4000
 
-// Add worker identification middleware
+// Enhanced CORS configuration to fix the issue
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true)
+
+      const allowedOrigins = [
+        "https://trippobazaar.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+      ]
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true)
+      } else {
+        console.log(`CORS blocked origin: ${origin}`)
+        callback(new Error("Not allowed by CORS"))
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Cache-Control",
+      "X-Worker-ID",
+    ],
+    exposedHeaders: ["X-Worker-ID"],
+    optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+  }),
+)
+
+// Handle preflight requests explicitly
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*")
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control,X-Worker-ID",
+  )
+  res.header("Access-Control-Allow-Credentials", "true")
+  res.sendStatus(200)
+})
+
+// Add worker identification middleware AFTER CORS
 app.use((req, res, next) => {
-  res.setHeader("X-Worker-ID", cluster.worker ? cluster.worker.id : "single")
+  const workerId = cluster.worker ? cluster.worker.id : "single"
+  res.setHeader("X-Worker-ID", workerId)
   next()
 })
 
+// Compression and body parsing middleware
 app.use(compression())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-app.use(
-  cors({
-    origin: ["https://trippobazaar.com", "http://localhost:5173"],
-  })
-)
+app.use(express.json({ limit: "10mb" }))
+app.use(express.urlencoded({ extended: true, limit: "10mb" }))
+
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  const workerId = cluster.worker ? cluster.worker.id : "single"
+  console.log(`Worker ${workerId}: ${req.method} ${req.path} - Origin: ${req.headers.origin}`)
+  next()
+})
 
 // Require Routes
 const userRoutes = require("./routes/UserRoutes")
@@ -53,12 +107,21 @@ app.get("/health", (req, res) => {
     pid: process.pid,
     uptime: process.uptime(),
     memory: process.memoryUsage(),
+    cors: {
+      origin: req.headers.origin,
+      userAgent: req.headers["user-agent"],
+    },
   })
 })
 
 app.get("/", (req, res) => {
   const workerId = cluster.worker ? cluster.worker.id : "single"
-  res.send(`API is running on worker ${workerId} (PID: ${process.pid})...`)
+  res.json({
+    message: `API is running on worker ${workerId} (PID: ${process.pid})`,
+    worker: workerId,
+    pid: process.pid,
+    timestamp: new Date().toISOString(),
+  })
 })
 
 // Define API Endpoints with prefixes
@@ -73,14 +136,33 @@ app.use("/api/contact", contactRoutes)
 app.use("/api/booking", bookingRoutes)
 app.use("/api/google", googleRoutes)
 
+// 404 handler
+app.use("*", (req, res) => {
+  const workerId = cluster.worker ? cluster.worker.id : "single"
+  res.status(404).json({
+    message: "Route not found",
+    worker: workerId,
+    path: req.originalUrl,
+    method: req.method,
+  })
+})
+
 // Global error handler
 app.use((err, req, res, next) => {
   const workerId = cluster.worker ? cluster.worker.id : "single"
   console.error(`Worker ${workerId} Error: ${err.message}`)
   console.error(err.stack)
-  res.status(500).json({
+
+  // Ensure CORS headers are set even in error responses
+  if (req.headers.origin) {
+    res.header("Access-Control-Allow-Origin", req.headers.origin)
+    res.header("Access-Control-Allow-Credentials", "true")
+  }
+
+  res.status(err.status || 500).json({
     message: "Something went wrong on the server",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+    error: process.env.NODE_ENV === "development" ? err.message : "Internal server error",
+    worker: workerId,
   })
 })
 
@@ -97,6 +179,9 @@ const connectDB = async (retries = 5) => {
         useUnifiedTopology: true,
         maxPoolSize: poolSize,
         minPoolSize: 1,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        family: 4, // Use IPv4, skip trying IPv6
       })
       const workerId = cluster.worker ? cluster.worker.id : "single"
       console.log(`Worker ${workerId}: Connected to MongoDB`)
@@ -123,6 +208,9 @@ connectDB().then(() => {
     console.log(`Worker ${workerId} (PID: ${process.pid}) is running on port ${PORT}`)
   })
 
+  // Set server timeout
+  server.timeout = 30000
+
   // Graceful shutdown
   const shutdown = () => {
     const workerId = cluster.worker ? cluster.worker.id : "single"
@@ -144,5 +232,12 @@ connectDB().then(() => {
   process.on("unhandledRejection", (reason, promise) => {
     const workerId = cluster.worker ? cluster.worker.id : "single"
     console.error(`Worker ${workerId} Unhandled Rejection at:`, promise, "reason:", reason)
+  })
+
+  // Handle uncaught exceptions
+  process.on("uncaughtException", (error) => {
+    const workerId = cluster.worker ? cluster.worker.id : "single"
+    console.error(`Worker ${workerId} Uncaught Exception:`, error)
+    process.exit(1)
   })
 })
