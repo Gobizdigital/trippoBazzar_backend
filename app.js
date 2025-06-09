@@ -24,15 +24,15 @@ if (cluster.isPrimary) {
 } else {
   const app = express();
   const PORT = process.env.PORT || 4000; // Use environment variable for port
-
-  app.use(compression());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
   app.use(
     cors({
       origin: ["https://trippobazaar.com", "http://localhost:5173"], // Pass an array of allowed origins
     })
   );
+
+  app.use(compression());
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   // Require Routes
   const userRoutes = require("./routes/UserRoutes");
