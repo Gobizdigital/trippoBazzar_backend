@@ -303,6 +303,7 @@ const calculateTotalPrice = async ({
   // Step 2: Verify pricing from the package model
   let mainPrice = packageDetails.price * guests; // Default price without selectedPricing
   let extraBedCharge = 0;
+  let extraPersonCharge = 0;
   let cnbCharge = 0;
   let cwbCharge = 0;
 
@@ -328,6 +329,10 @@ const calculateTotalPrice = async ({
     // Step 3: Add Extra Bed and CNB charges ONLY IF selectedPricing is valid
     if (services?.extraBed) {
       extraBedCharge = matchingPricing.extraBedCharge || 0;
+    }
+
+    if (services?.extraPerson) {
+      extraPersonCharge = matchingPricing.extraPersonCharge || 0;
     }
 
     if (services?.cnb) {
@@ -378,7 +383,7 @@ const calculateTotalPrice = async ({
   const totalCost =
     mainPrice +
     // totalHotelPrice +
-    (selectedPricing ? extraBedCharge + cnbCharge + cwbCharge : 0); // Add only if selectedPricing exists
+    (selectedPricing ? extraBedCharge + extraPersonCharge + cnbCharge + cwbCharge : 0); // Add only if selectedPricing exists
 
   // Step 7: Apply coupon if valid
   if (coupon?.id) {
