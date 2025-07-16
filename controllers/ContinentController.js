@@ -23,9 +23,63 @@ const addContinent = async (req, res) => {
   }
 };
 
+// const getContinentByQuery = async (req, res) => {
+//   try {
+//     const { fields,onlyIndiaStates } = req.query;
+//     const projection = fields ? fields.split(",").join(" ") : "";
+
+//     let query = continentModel.find({}, projection);
+
+//     if (fields?.includes("Countries")) {
+//       query = query.populate({
+//         path: "Countries",
+//         select: "CountryName States", // fetch CountryName + States field
+//         populate: {
+//           path: "States",
+//           select: "StateName", // only get StateName from States
+//         },
+//       });
+//     }
+
+//     let continents = await query.lean();
+
+//     // 🔍 Keep States only for India
+//     continents = continents.map((continent) => {
+//       if (!continent.Countries) return continent;
+
+//       continent.Countries = continent.Countries.map((country) => {
+//         // if (country.CountryName === "India") {
+//         //   return country; // Keep States populated
+//         // } else {
+//         //   // Remove States from other countries
+//         //   const { States, ...rest } = country;
+//         //   return rest;
+//         // }
+
+//         return country;
+//       });
+
+//       return continent;
+//     });
+
+//     if (continents.length > 0) {
+//       res.status(200).json({
+//         message: "Continents retrieved successfully",
+//         data: continents,
+//       });
+//     } else {
+//       res.status(404).json({ message: "No continent found" });
+//     }
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ message: "Error fetching continents", error: error.message });
+//   }
+// };
+
 const getContinentByQuery = async (req, res) => {
   try {
-    const { fields } = req.query;
+    const { fields, onlyIndiaStates } = req.query;
     const projection = fields ? fields.split(",").join(" ") : "";
 
     let query = continentModel.find({}, projection);
@@ -33,47 +87,46 @@ const getContinentByQuery = async (req, res) => {
     if (fields?.includes("Countries")) {
       query = query.populate({
         path: "Countries",
-        select: "CountryName States", // fetch CountryName + States field
+        select: "CountryName States",
         populate: {
           path: "States",
-          select: "StateName", // only get StateName from States
+          select: "StateName",
         },
       });
     }
 
     let continents = await query.lean();
 
-    // 🔍 Keep States only for India
-    continents = continents.map((continent) => {
-      if (!continent.Countries) return continent;
+    // ✅ Conditional logic for onlyIndiaStates
+    if (onlyIndiaStates === "true") {
+      continents = continents.map((continent) => {
+        if (!continent.Countries) return continent;
 
-      continent.Countries = continent.Countries.map((country) => {
-        if (country.CountryName === "India") {
-          return country; // Keep States populated
-        } else {
-          // Remove States from other countries
-          const { States, ...rest } = country;
-          return rest;
-        }
+        continent.Countries = continent.Countries.map((country) => {
+          if (country.CountryName === "India") {
+            return country; // Keep States for India
+          } else {
+            const { States, ...rest } = country;
+            return rest; // Strip States for other countries
+          }
+        });
+
+        return continent;
       });
-
-      return continent;
-    });
-
-    if (continents.length > 0) {
-      res.status(200).json({
-        message: "Continents retrieved successfully",
-        data: continents,
-      });
-    } else {
-      res.status(404).json({ message: "No continent found" });
     }
+
+    res.status(200).json({
+      message: "Continents retrieved successfully",
+      data: continents,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching continents", error: error.message });
+    res.status(500).json({
+      message: "Error fetching continents",
+      error: error.message,
+    });
   }
 };
+
 
 const getAllContinent = async (req, res) => {
   try {
